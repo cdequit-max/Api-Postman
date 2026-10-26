@@ -1,0 +1,4 @@
+$kind: collection
+description: Final Lab Activity 1 - RESTful API for student records.
+variables:
+  base_url: http://127.0.0.1:8000/api

@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{base_url}}/students"
+method: POST
+headers:
+  Accept: application/json
+  Content-Type: application/json
+body:
+  type: json
+  content: "{}"
+order: 6000

@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{base_url}}/students"
+method: POST
+headers:
+  Accept: application/json
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+        "student_number": "2023-00001",
+        "first_name": "Juan",
+        "last_name": "Dela Cruz",
+        "email": "juan@example.com",
+        "course": "BSIT",
+        "year_level": 3
+    }
+order: 3000
