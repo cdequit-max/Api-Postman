@@ -56,3 +56,31 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+
+## Vue.js 3 Frontend (Final – Lab Activity 3)
+
+The Vue 3 + Vite frontend lives in this same project under `resources/js`.
+
+```
+resources/js/
+├── app.js                      # mounts the Vue app
+├── App.vue                     # root component (state + CRUD logic)
+├── services/api.js             # fetch wrapper for /api (Sanctum token)
+└── components/
+    ├── LoginForm.vue
+    ├── StudentTable.vue        # props + v-for + v-if
+    ├── StudentForm.vue         # add / edit modal, shows validation errors
+    └── AlertMessage.vue        # success / error feedback
+```
+
+### Run
+```sh
+composer install
+cp .env.example .env && php artisan key:generate   # skip if .env exists
+php artisan migrate --seed
+npm install
+npm run dev            # terminal 1
+php artisan serve      # terminal 2 -> http://localhost:8000
+```
+Logins: `admin@example.com` / `password123` (full CRUD), `user@example.com` / `password123` (read-only).
