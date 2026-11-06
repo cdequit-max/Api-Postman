@@ -1,10 +1,13 @@
 <script setup>
 import { ref } from 'vue';
-import { api, auth, ApiError } from '../services/api';
+import { ApiError } from '../services/api';
+import { useAuth } from '../composables/useAuth';
 
 const emit = defineEmits(['logged-in']);
+const { login } = useAuth();
 
-const email = ref('admin@example.com');
+// Controlled inputs: v-model keeps these refs and the fields in sync.
+const email = ref('');
 const password = ref('');
 const loading = ref(false);
 const errors = ref({});
@@ -15,9 +18,9 @@ async function submit() {
     errors.value = {};
     message.value = '';
     try {
-        const res = await api.login(email.value, password.value);
-        auth.save(res.token, res.user);
-        emit('logged-in', res.user);
+        const user = await login(email.value, password.value);
+        password.value = '';
+        emit('logged-in', user);
     } catch (e) {
         if (e instanceof ApiError && e.status === 422) errors.value = e.errors;
         else message.value = e.message;
@@ -30,7 +33,7 @@ async function submit() {
 <template>
     <section class="card login">
         <h2>Log in</h2>
-        <p class="muted">Use <code>admin@example.com</code> (full CRUD) or <code>user@example.com</code> (read-only).</p>
+        <p class="muted">Log in as an Administrator (full access) or a Regular User (view only).</p>
 
         <p v-if="message" class="field-error">{{ message }}</p>
 
