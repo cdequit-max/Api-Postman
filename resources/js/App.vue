@@ -1,22 +1,26 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { api, auth, ApiError } from './services/api';
+import { ref, onMounted } from 'vue';
+import { api, ApiError } from './services/api';
+import { useAuth } from './composables/useAuth';
 import LoginForm from './components/LoginForm.vue';
+import SessionInfo from './components/SessionInfo.vue';
 import StudentTable from './components/StudentTable.vue';
 import StudentForm from './components/StudentForm.vue';
 import AlertMessage from './components/AlertMessage.vue';
 
-const user = ref(auth.user());
+// Shared auth state (user, token, role) from the composable
+const { state, isLoggedIn, isAdmin, maskedToken, logout, clearSession } = useAuth();
+
+// Local UI state, all reactive refs
 const students = ref([]);
 const loading = ref(false);
 const saving = ref(false);
+const deletingId = ref(null);
+const testing = ref(false);
 const showForm = ref(false);
 const editingStudent = ref(null);   // null = adding, object = editing
 const formErrors = ref({});
 const alert = ref({ type: '', text: '' });
-
-const isLoggedIn = computed(() => !!user.value);
-const isAdmin = computed(() => user.value?.role === 'admin');
 
 function notify(type, text) {
     alert.value = { type, text };
@@ -25,9 +29,8 @@ function notify(type, text) {
 
 function handleFailure(error) {
     if (error.status === 401) {
-        // Token expired or revoked
-        auth.clear();
-        user.value = null;
+        // Token expired or revoked: Laravel rejected it
+        clearSession();
         students.value = [];
         notify('error', 'Your session expired. Please log in again.');
         return;
@@ -47,19 +50,36 @@ async function loadStudents() {
     }
 }
 
-function onLoggedIn(loggedInUser) {
-    user.value = loggedInUser;
+function onLoggedIn() {
     alert.value = { type: '', text: '' };
+    notify('success', 'Logged in successfully.');
     loadStudents();
 }
 
-async function logout() {
-    try { await api.logout(); } catch { /* token may already be invalid */ }
-    auth.clear();
-    user.value = null;
+async function onLogout() {
+    await logout();
     students.value = [];
     closeForm();
-    notify('success', 'You have been logged out.');
+    notify('success', 'You have been logged out. Token revoked.');
+}
+
+// Calls an admin-only endpoint to prove Laravel enforces the role, not just Vue.
+async function testAccess() {
+    testing.value = true;
+    try {
+        await api.testAdminAccess();
+        notify('success', 'Request accepted.');
+    } catch (e) {
+        if (e.status === 422) {
+            notify('success', 'Allowed (HTTP 422): Laravel let this admin through; the empty body just failed validation.');
+        } else if (e.status === 403) {
+            notify('error', `Blocked by Laravel (HTTP 403): ${e.message}`);
+        } else {
+            handleFailure(e);
+        }
+    } finally {
+        testing.value = false;
+    }
 }
 
 function openAdd() {
@@ -108,12 +128,15 @@ async function saveStudent(payload) {
 
 async function deleteStudent(student) {
     if (!confirm(`Delete ${student.first_name} ${student.last_name}?`)) return;
+    deletingId.value = student.id;
     try {
         const res = await api.deleteStudent(student.id);
         students.value = students.value.filter((s) => s.id !== student.id);
         notify('success', res.message);
     } catch (e) {
         handleFailure(e);
+    } finally {
+        deletingId.value = null;
     }
 }
 
@@ -126,33 +149,42 @@ onMounted(() => {
     <main class="container">
         <header class="topbar">
             <h1>Student Management</h1>
-            <div v-if="isLoggedIn" class="userbox">
-                <span>{{ user.name }} <span class="badge">{{ user.role }}</span></span>
-                <button class="btn btn-light" @click="logout">Logout</button>
-            </div>
+            <button v-if="isLoggedIn" class="btn btn-light" @click="onLogout">Logout</button>
         </header>
 
         <AlertMessage :type="alert.type" :text="alert.text" @close="alert = { type: '', text: '' }" />
 
         <LoginForm v-if="!isLoggedIn" @logged-in="onLoggedIn" />
 
-        <section v-else class="card">
-            <div class="card-head">
-                <h2>Students <small>({{ students.length }})</small></h2>
-                <button v-if="isAdmin" class="btn btn-primary" @click="openAdd">+ Add Student</button>
-                <span v-else class="muted">Read-only access</span>
-            </div>
-
-            <p v-if="loading" class="muted">Loading students…</p>
-
-            <StudentTable
-                v-else
-                :students="students"
+        <template v-else>
+            <SessionInfo
+                :name="state.user.name"
+                :role="state.user.role"
+                :masked-token="maskedToken"
                 :is-admin="isAdmin"
-                @edit="openEdit"
-                @delete="deleteStudent"
+                :testing="testing"
+                @test-access="testAccess"
             />
-        </section>
+
+            <section class="card">
+                <div class="card-head">
+                    <h2>Students <small>({{ students.length }})</small></h2>
+                    <button v-if="isAdmin" class="btn btn-primary" @click="openAdd">+ Add Student</button>
+                    <span v-else class="muted">Read-only access</span>
+                </div>
+
+                <p v-if="loading" class="muted">Loading students…</p>
+
+                <StudentTable
+                    v-else
+                    :students="students"
+                    :is-admin="isAdmin"
+                    :deleting-id="deletingId"
+                    @edit="openEdit"
+                    @delete="deleteStudent"
+                />
+            </section>
+        </template>
 
         <StudentForm
             v-if="showForm"
