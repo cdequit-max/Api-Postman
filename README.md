@@ -83,4 +83,11 @@ npm install
 npm run dev            # terminal 1
 php artisan serve      # terminal 2 -> http://localhost:8000
 ```
-Logins: `admin@example.com` / `password123` (full CRUD), `user@example.com` / `password123` (read-only).
+Set `SEED_ADMIN_PASSWORD` and `SEED_USER_PASSWORD` in your local `.env` (never commit `.env`) before running `php artisan migrate --seed`.
+Accounts: `admin@example.com` (Administrator, full CRUD) and `user@example.com` (Regular User, view only).
+
+### State & authentication (Final – Lab Activity 4)
+- `composables/useAuth.js` – shared reactive auth state (user, token, role) using the Composition API.
+- `SessionInfo.vue` – shows the logged-in role, a masked Bearer token, and a button that tests an admin-only endpoint.
+- Login calls `POST /api/login`; the returned Sanctum token is sent as `Authorization: Bearer <token>` on every request.
+- Laravel enforces permissions (`auth:sanctum` + `admin` middleware); hiding buttons in Vue is only a convenience.
