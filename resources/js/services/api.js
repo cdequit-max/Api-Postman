@@ -58,4 +58,6 @@ export const api = {
     createStudent: (student) => request('POST', '/students', student),
     updateStudent: (id, student) => request('PUT', `/students/${id}`, student),
     deleteStudent: (id) => request('DELETE', `/students/${id}`),
+    // Sends an empty body to an admin-only route: admin -> 422 (allowed, just invalid), regular user -> 403.
+    testAdminAccess: () => request('POST', '/students', {}),
 };
